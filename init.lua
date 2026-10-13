@@ -200,6 +200,10 @@ for id, d in pairs(dinos) do
 		collisionbox = d.collisionbox,
 		rotate = MODEL_ROTATE,
 		makes_footstep_sound = true,
+		-- idle calls, played at random intervals by Mobs Redo
+		sounds = {
+			random = "small_dino_raspy_calls",
+		},
 		walk_velocity = d.walk_velocity,
 		run_velocity = d.run_velocity,
 		jump = true,
