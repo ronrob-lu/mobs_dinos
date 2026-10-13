@@ -14,6 +14,14 @@ A [Luanti](https://www.luanti.org) (Minetest) mod that adds four dinosaurs to
 - They spawn naturally on soil/sand and have spawn eggs (`mobs_dinos:<name>_egg`).
 - They cannot swim (they sink) and take water and lava damage.
 
+## Taming and riding
+
+- Spawn eggs create **tamed** dinos owned by you (hold sneak to spawn a wild one).
+- Wild dinos are tamed by feeding them raw meat (`mobs:meat_raw`) 4 times.
+- A tamed dino can be ridden by its owner: right-click to mount, right-click
+  again to dismount. Steer with the movement keys / look direction.
+- Tamed dinos no longer attack players.
+
 ## Animation
 
 Luanti plays only one glTF animation, so each model contains a single

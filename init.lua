@@ -112,10 +112,75 @@ local dinos = {
 	},
 }
 
+-- Dinos are tamed by feeding them raw meat this many times
+local FEED_COUNT = 4
+
 for id, d in pairs(dinos) do
 	local name = mod_name .. ":" .. id
+	local top = d.collisionbox[5]
 
 	mobs:register_mob(name, {
+		-- taming: feed raw meat (follow items are also what a dino follows)
+		follow = {"mobs:meat_raw"},
+		-- riding setup (read by mobs.attach / mobs.drive). register_mob does
+		-- not copy these fields, so they are set on the entity when activated.
+		after_activate = function(self)
+			self.max_speed_forward = d.run_velocity
+			self.max_speed_reverse = d.walk_velocity * 0.5
+			self.accel = 4
+			self.driver_attach_at = {x = 0, y = top * 10 * 0.9 / d.visual_size.y, z = 0}
+			self.driver_eye_offset = {x = 0, y = top * 4, z = 0}
+			self.driver_scale = {x = 1 / d.visual_size.x, y = 1 / d.visual_size.y}
+		end,
+		owner_loyal = true,
+
+		-- Feed meat to tame; the owner can then right-click to mount or
+		-- dismount. Wild dinos cannot be ridden.
+		on_rightclick = function(self, clicker)
+			if not clicker or not clicker:is_player() then return end
+			local pname = clicker:get_player_name()
+
+			-- feeding tames (owner becomes the feeder)
+			if mobs:feed_tame(self, clicker, FEED_COUNT, false, true) then
+				return
+			end
+			if mobs:protect(self, clicker) then return end
+
+			if not self.tamed then
+				core.chat_send_player(pname, S("This dino is wild. Feed it raw meat to tame it."))
+				return
+			end
+			if self.owner ~= pname then
+				core.chat_send_player(pname, S("This dino belongs to someone else."))
+				return
+			end
+
+			if self.driver and clicker == self.driver then
+				mobs.detach(clicker)
+			elseif not self.driver then
+				mobs.attach(self, clicker)
+			end
+		end,
+
+		do_custom = function(self, dtime)
+			-- tamed dinos never attack players/npcs
+			if self.tamed then
+				self.attack_players = false
+				self.attack_npcs = false
+			end
+			if self.driver then
+				mobs.drive(self, "walk", "stand", false, dtime)
+				return false -- skip normal mob AI while ridden
+			end
+			return true
+		end,
+
+		on_die = function(self, pos)
+			if self.driver then
+				mobs.detach(self.driver)
+			end
+		end,
+
 		description = d.description,
 		type = "monster",
 		-- aggressive dinos attack players on sight; the others only when hit
@@ -192,7 +257,18 @@ for id, d in pairs(dinos) do
 			if core.is_protected(pos, pname) then return end
 
 			pos.y = pos.y - d.collisionbox[2] + 0.1
-			if not core.add_entity(pos, name) then return end
+			local obj = core.add_entity(pos, name)
+			if not obj then return end
+
+			-- egg-spawned dinos are tamed and owned by the placer (rideable);
+			-- hold sneak to spawn a wild one instead
+			local ent = obj:get_luaentity()
+			if ent and not placer:get_player_control().sneak then
+				ent.tamed = true
+				ent.owner = pname
+				ent.attack_players = false
+				ent.attack_npcs = false
+			end
 
 			if not (core.is_creative_enabled and core.is_creative_enabled(pname)) then
 				itemstack:take_item()
